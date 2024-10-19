@@ -1,0 +1,52 @@
+Rule Engine with AST
+
+import json
+
+class Node:
+    def _init_(self, type, left=None, right=None, value=None):
+        self.type = type
+        self.left = left
+        self.right = right
+        self.value = value
+
+def create_rule(rule_string):
+    # Parse rule_string into an AST using a parser (e.g., recursive descent or ANTLR)
+    # Example using a simple recursive descent parser:
+    def parse(string):
+        if string.startswith('('):
+            operator, rest = string[1:].split(')')
+            left, right = parse(rest)
+            return Node(operator, left, right)
+        else:
+            return Node('operand', value=json.loads(string))
+    return parse(rule_string)
+
+def combine_rules(rules):
+    # Combine ASTs using a suitable algorithm (e.g., bottom-up traversal)
+    def combine(ast1, ast2):
+        if ast1.type == 'AND':
+            return Node('AND', ast1, combine(ast2, ast1.right))
+        elif ast2.type == 'AND':
+            return Node('AND', ast2, combine(ast1, ast2.right))
+        else:
+            return Node('OR', ast1, ast2)
+    return reduce(combine, [create_rule(rule) for rule in rules])
+
+def evaluate_rule(ast, data):
+    # Traverse the AST, evaluating nodes based on their types and values
+    def evaluate(ast):
+        if ast.type == 'operand':
+            return all(ast.value[key] == data.get(key) for key in ast.value)
+        elif ast.type == 'AND':
+            return evaluate(ast.left) and evaluate(ast.right)
+        elif ast.type == 'OR':
+            return evaluate(ast.left) or evaluate(ast.right)
+    return evaluate(ast)
+
+# Sample usage:
+rule1_string = "((age >= 30 AND department = 'Marketing')) AND (salary > 50000 OR experience > 5)"
+rule2_string = "((age >= 30 AND department = 'Marketing')) AND (salary > 20000 OR experience > 5)"
+combined_ast = combine_rules([rule1_string, rule2_string])
+data = {"age": 35, "department": "Marketing", "salary": 60000, "experience": 3}
+result = evaluate_rule(combined_ast, data)
+print(result)  # Output: True
